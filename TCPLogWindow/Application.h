@@ -10,6 +10,7 @@ public:
 
 public:
 	Application(Type type);
+	~Application();
 
 	void run();
 

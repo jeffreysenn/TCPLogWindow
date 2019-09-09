@@ -1,5 +1,6 @@
-// networking.h
+#pragma once
 
+// networking.h
 #include <string>
 using string = std::string;
 
