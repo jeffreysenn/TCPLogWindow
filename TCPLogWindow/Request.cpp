@@ -1,41 +1,73 @@
 #include "Request.h"
 #include "networking.h"
 
+namespace Level
+{
+	const Level toLevel(const std::string& string)
+	{
+		for (auto it = LevelStrings.begin(); it != LevelStrings.end(); ++it)
+		{
+			if (string == *it)
+			{
+				size_t index = it - LevelStrings.begin();
+				return static_cast<Level>(index);
+			}
+		}
+		return Level::Error;
+	}
+}
+
 Request::Request()
-	: mPut(nullptr)
-	, mLevel(Level::Error)
-	, mLength(0)
-	, mBody(nullptr)
+	: put()
+	, timeStamp(0)
+	, level(Level::Error)
+	, length(0)
+	, body()
 {
 }
 
-Request::Request(const std::string& put, Level::Level level, size_t length, const std::string& body)
-	: mPut(&put)
-	, mLevel(level)
-	, mLength(length)
-	, mBody(&body)
+Request::Request(const std::string&& put, Level::Level level, size_t length, const std::string&& body)
+	: put(put)
+	, timeStamp(0)
+	, level(level)
+	, length(length)
+	, body(body)
 {
 }
 
-void Request::setBody(size_t length, const std::string& body)
+bool Request::operator==(const Request& rhs) const
 {
-	mLength = length;
-	mBody = &body;
+	return level == rhs.level
+		&& length == rhs.length
+		&& timeStamp == rhs.timeStamp
+		&& put == put;
 }
 
-std::string Request::formRequestString()
+bool Request::operator!=(const Request& rhs) const
 {
-	time time = time::now();
-	std::string timeString = std::to_string(time.as_milliseconds());
+	return !(*this==rhs);
+}
+
+std::string Request::formRequestStringClient()
+{
+	timeStamp = time::now().as_milliseconds();
 
 	std::string request =
-		"Put " + *mPut + "\r\n"
-		+ "Timestamp: " + timeString + "\r\n"
-		+ "Level: " + Level::toString(mLevel) + "\r\n"
-		+ "Length: " + std::to_string(mLength) + "\r\n"
+		"Put " + put + "\r\n"
+		+ "Timestamp: " + std::to_string(timeStamp) + "\r\n"
+		+ "Level: " + Level::toString(level) + "\r\n"
+		+ "Length: " + std::to_string(length) + "\r\n"
 		+ "\r\n"
-		+ *mBody
-		+ "\r\n";
+		+ body;
 
 	return request;
 }
+
+std::string Request::formRequestStringServer()
+{
+	std::string request = put + " " + std::to_string(timeStamp) + " "
+		+ Level::toString(level) + " " + body	+ "\r\n";
+
+	return request;
+}
+

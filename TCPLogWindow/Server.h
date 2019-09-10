@@ -16,8 +16,7 @@ private:
 	bool openListener();
 	bool acceptClient();
 	bool receive();
-
-	uint32_t getLineCount(char* data);
+	struct Request reconstructRequest(char* data, size_t size);
 
 private:
 	ip_address mAddr;

@@ -7,7 +7,7 @@ struct DataBuffer
 public:
 	DataBuffer(size_t size)
 		: size(size)
-		, data(new char[size])
+		, data(new char[size]())
 	{}
 
 	char* getData() { return data.get(); }

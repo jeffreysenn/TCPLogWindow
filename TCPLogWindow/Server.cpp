@@ -1,6 +1,6 @@
 #include "Server.h"
-
-#include <sstream>
+#include "Request.h"
+#include "Utility.h"
 
 #define TEST_SERVER_ADDRESS 0, 0, 0, 0, 50000
 #define DATA_BUFFER_SIZE size_t(1024 * 1024)
@@ -19,7 +19,7 @@ void Server::run()
 
 	while (true)
 	{
-		if(!(acceptClient()))
+		if (!(acceptClient()))
 			break;
 
 		receive();
@@ -47,7 +47,7 @@ bool Server::acceptClient()
 bool Server::receive()
 {
 	auto it = mSocketDataList.begin();
-	while(it != mSocketDataList.end())
+	while (it != mSocketDataList.end())
 	{
 		std::string addressString;
 		it->address.as_string(addressString);
@@ -55,77 +55,129 @@ bool Server::receive()
 
 		size_t received = 0;
 		size_t dataBufferSize = it->dataBuffer.getSize();
+
 		while (received < dataBufferSize)
 		{
 			auto result = it->socket.receive(
-				dataBufferSize - received, 
+				dataBufferSize - received,
 				(uint8*)it->dataBuffer.getData());
 
-			if (result.is_success())
+			received += result.length_;
+
+			if (received >= dataBufferSize)
 			{
-				received += result.length_;
-
-				char* data = it->dataBuffer.getData();
-				// when line count is greater than 5, 
-				// header receiving is completed
-				if (getLineCount(data) >= 5)
-				{
-					//read header
-					uint32_t lineCount = 0;
-					std::istringstream iss;
-					std::string line;
-					while (getline(iss, line))
-					{
-						switch (lineCount)
-						{
-						case 0:
-
-						case 1:
-						case 2:
-						case 3:
-						case 4:
-							break;
-						};
-						lineCount++;
-					}
-				}
-
-				//it++;
-				//break;
+				printf("disconnected client because it is spamming!");
+				it->socket.close();
+				mSocketDataList.erase(it++);
+				break;
 			}
-			else
+
+			// process data
+			char* data = it->dataBuffer.getData();
+			Request request = reconstructRequest(data, dataBufferSize);
+			if (request != Request())
 			{
-				auto errcode = result.code_;
-				if(!network::error::is_non_critical(errcode))
-				{
-					auto errmsg = network::error::as_string(errcode);
-					std::string addressString;
-					it->address.as_string(addressString);
-					printf("receiving error - %s (%d) \n", errmsg, errcode);
+				printf(request.formRequestStringServer().c_str());
 
-					it->socket.close();
-					// TODO: remove the socketData from the list
-					break;
-				}
+				// TODO: Response to the client
+
+				memset(data, '\0', dataBufferSize);
+				++it;
+				break;
 			}
+
+
+			//else
+			//{
+			//	auto errcode = result.code_;
+			//	if(!network::error::is_non_critical(errcode))
+			//	{
+			//		auto errmsg = network::error::as_string(errcode);
+			//		std::string addressString;
+			//		it->address.as_string(addressString);
+			//		printf("receiving error - %s (%d) \n", errmsg, errcode);
+
+			//		it->socket.close();
+			//		// TODO: remove the socketData from the list
+			//		break;
+			//	}
+			//}
 		}
-
-		it->dataBuffer.getData()[received] = '\0';
-		printf(it->dataBuffer.getData());
 	}
 	return false;
 }
 
-uint32_t Server::getLineCount(char* data)
+Request Server::reconstructRequest(char* data, size_t size)
 {
-	std::istringstream iss(data);
-	std::string line;
-	uint32_t lineCount = 0;
-	while (getline(iss, line))
+	size_t rnPairCount = 0;
+	char* begin = data;
+	const char rnPair[] = "\r\n";
+	char* pos = nullptr;
+
+	Request request;
+	// find "\r\n"s and increment count
+	while (rnPairCount < 5)
 	{
-		++lineCount;
+		char* find = strstr(begin, rnPair);
+		if (find != nullptr)
+		{
+			pos = find;
+			switch (rnPairCount)
+			{
+			case 0:
+			{
+				char* putBegin = begin + sizeof("PUT ") - 1;
+				std::string put(putBegin, pos - putBegin);
+				request.put = std::move(put);
+				break;
+			}
+			case 1:
+			{
+				char* timeStampBegin = begin + sizeof("Timestamp: ") - 1;
+				std::string timeStamp(timeStampBegin, pos - timeStampBegin);
+				request.timeStamp = std::stof(timeStamp);
+				break;
+			}
+			case 2:
+			{
+				char* levelBegin = begin + sizeof("Level: ") - 1;
+				std::string level(levelBegin, pos - levelBegin);
+				request.level = Level::toLevel(level);
+				break;
+			}
+			case 3:
+			{
+				char* lengthBegin = begin + sizeof("Length: ") - 1;
+				std::string length(lengthBegin, pos - lengthBegin);
+				request.length = static_cast<size_t>(std::stoi(length));
+				break;
+			}
+			};
+
+			++rnPairCount;
+			begin = pos + sizeof(rnPair) - 1;
+		}
+		else return Request();
 	}
-	return lineCount;
+
+	// We know the header is received and processed
+	// completely when "\r\n" count is 5. 
+	// Then we start to process the body. 
+	if (rnPairCount == 5)
+	{
+		size_t receivedBodyLength = std::strlen(begin);
+		// check if the body is intact
+		if (receivedBodyLength >= request.length)
+		{
+			std::string body(begin, request.length);
+			request.body = std::move(body);
+
+			// Now we have read and reconstructed the request. 
+			return request;
+		}
+	}
+
+	return Request();
 }
 
 bool Server::openListener()
