@@ -11,6 +11,8 @@ public:
 	const char* getData() const { return data.get(); }
 	size_t getSize() const { return size; }
 
+	void clear();
+
 private:
 	std::unique_ptr<char> data;
 	size_t size;

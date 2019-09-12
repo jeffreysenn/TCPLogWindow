@@ -1,6 +1,7 @@
 #pragma once
 #include "networking.h"
 #include "SocketData.h"
+#include "Response.h"
 
 #include <list>
 #include <memory>
@@ -17,6 +18,7 @@ private:
 	{
 		enum Type
 		{
+			Unknown,
 			NoData,
 			Timeout,
 			Spamming,
@@ -24,6 +26,8 @@ private:
 			RequestIncomplete,
 			Success,
 		};
+
+		Result();
 
 		Type type;
 		std::string errorMsg;
@@ -39,6 +43,7 @@ private:
 	Result receive(SocketData* socketData);
 	Result reconstruct(SocketData* socketData, struct Request& request);
 	void process(std::list<std::unique_ptr<SocketData>>::iterator& it, const struct Request& request, const Result& result);
+	void response(Response::Status status, float timestamp, tcp_socket& socket);
 
 	Result reconstructHeader(char* data, size_t size, struct Request& request, size_t& headerLength);
 

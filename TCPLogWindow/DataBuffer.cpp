@@ -5,3 +5,8 @@ DataBuffer::DataBuffer(size_t size)
 	, data(new char[size]())
 {
 }
+
+void DataBuffer::clear()
+{
+	memset(data.get(), '\0', size);
+}

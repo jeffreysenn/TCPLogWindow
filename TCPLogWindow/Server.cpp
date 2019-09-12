@@ -175,7 +175,8 @@ Server::Result Server::reconstruct(SocketData* socketData, Request& request)
 
 void Server::process(std::list<std::unique_ptr<SocketData>>::iterator& it, const Request& request, const Result& result)
 {
-	ip_address addr = it->get()->address;
+	ip_address addr = (*it)->address;
+	tcp_socket socket = (*it)->socket;
 	switch (result.type)
 	{
 	case Server::Result::NoData:
@@ -188,14 +189,25 @@ void Server::process(std::list<std::unique_ptr<SocketData>>::iterator& it, const
 	case Server::Result::BadRequest:
 		Utility::printIPAddr(addr);
 		printf("Error: %s\n", result.errorMsg.c_str());
+		response(Response::BadRequest, request.timeStamp, socket);
 		mSocketDataList.erase(it++);
 		break;
 
 	case Server::Result::Success:
 		Utility::printIPAddr(addr);
 		printf("%s\n",request.formRequestStringServer().c_str());
+		response(Response::Success, request.timeStamp, socket);
 		break;
 	}
+}
+
+void Server::response(Response::Status status, float timestamp, tcp_socket& socket)
+{
+	Response response(status, timestamp);
+	std::string responseString = response.formResponse();
+	size_t size = responseString.length();
+
+	socket.send(size, (const uint8*)responseString.c_str());
 }
 
 Server::Result Server::reconstructHeader(char* data, size_t size, Request& request, size_t& headerLength)
@@ -284,3 +296,7 @@ Server::Result Server::reconstructHeader(char* data, size_t size, Request& reque
 	return result;
 }
 
+Server::Result::Result()
+	: type(Result::Unknown)
+{
+}
