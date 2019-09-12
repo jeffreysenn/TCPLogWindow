@@ -1,5 +1,4 @@
 #include "Client.h"
-#include "Request.h"
 
 #include <windows.h>
 #include <iostream>
@@ -11,12 +10,20 @@
 Client::Client()
 	: mDataBuffer(DATA_BUFFER_SIZE)
 {
+	std::string body("Program init OK. ");
+	std::unique_ptr<Request> initialRequest(std::make_unique<Request>(
+	"/program",
+	Level::Info,
+	body.length(),
+	body));
+	mRequestQueue.push_back(std::move(initialRequest));
 }
 
 void Client::run()
 {
 	printf("Client: \n");
 
+	// handle user input ip and port
 	std::string addrString;
 	ip_address addr;
 	std::cout << "Enter server IP address and port" << std::endl;
@@ -32,16 +39,20 @@ void Client::run()
 	if (!connect(addr))
 		return;
 
-	int sentCount = 0;
-
 	while (true)
 	{
+		if (!send())
+			return;
+
+		mRequestQueue.clear();
+
+		// receive
 		size_t receivedLength;
 		if (receive(mDataBuffer.getData(), mDataBuffer.getSize(), receivedLength))
 		{
 			if (receivedLength > 0)
 			{
-				printf("%s\n", mDataBuffer.getData());
+				printf("Server response: \n%s\n", mDataBuffer.getData());
 				mDataBuffer.clear();
 			}
 		}
@@ -50,29 +61,43 @@ void Client::run()
 			return;
 		}
 
-		std::string requestBody;
-		std::cout << "Request: ";
-		std::cin >> requestBody;
-
-		send("/game", Level::Info, requestBody);
+		listenUserRequest();
 	}
 }
 
-bool Client::send(const std::string& put, Level::Level level, const std::string& body)
+void Client::listenUserRequest()
 {
-	Request request;
-	request.put = put;
-	request.level = level;
-	request.bodyLength = body.length();
-	request.body = std::move(body);
+	std::string requestBody;
+	std::cout << "Request: ";
+	std::cin >> requestBody;
 
-	std::string requestString = request.formRequestStringClient();
+	std::unique_ptr<Request> userRequest(std::make_unique<Request>(
+		"/user",
+		Level::Debug,
+		requestBody.length(),
+		requestBody));
+	mRequestQueue.push_back(std::move(userRequest));
+}
 
+bool Client::send()
+{
+	for (auto it = mRequestQueue.begin(); it != mRequestQueue.end(); ++it)
+	{
+		if (!sendRequest(it->get()))
+			return false;
+	}
+	return true;
+}
+
+bool Client::sendRequest(Request* request)
+{
+	std::string requestString = request->formRequestStringClient();
+	printf("Sending request...\n#request begin\n%s\n#end of request\n\n", requestString.c_str());
 	size_t length = requestString.length();
 	size_t sent = 0;
 	while (sent < length)
 	{
-		auto result = mSocket.send(requestString.length() - sent, (uint8*)requestString.c_str() + sent);
+		auto result = mSocket.send((uint32_t)(requestString.length() - sent), (uint8*)requestString.c_str() + sent);
 		if (result.is_success())
 		{
 			sent += result.length_;
@@ -80,20 +105,17 @@ bool Client::send(const std::string& put, Level::Level level, const std::string&
 		else
 		{
 			auto errcode = result.code_;
-			if(!network::error::is_non_critical(errcode))
-			{
-				auto errmsg = network::error::as_string(errcode);
-				printf("failed to send - %s (%d) \n", errmsg, errcode);
-				return false;
-			}
+			auto errmsg = network::error::as_string(errcode);
+			printf("failed to send - %s (%d) \n", errmsg, errcode);
+			return false;
 		}
 	}
+
 	return true;
 }
 
 bool Client::connect(const ip_address& serverAddr)
 {
-	//serverAddr = ip_address(TEST_SERVER_ADDRESS);
 	auto result = mSocket.connect(serverAddr);
 	if (result.is_failure())
 	{
@@ -112,7 +134,7 @@ bool Client::receive(char* dataBuffer, size_t bufferSize, size_t& receivedLength
 	while (receivedLength < bufferSize)
 	{
 		auto receiveResult = mSocket.receive(
-			bufferSize - receivedLength,
+			(uint32_t)(bufferSize - receivedLength),
 			(uint8*)dataBuffer);
 
 		receivedLength += receiveResult.length_;

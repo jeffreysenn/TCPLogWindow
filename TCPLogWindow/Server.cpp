@@ -8,7 +8,7 @@
 
 #define TEST_SERVER_ADDRESS 0, 0, 0, 0, 55555
 #define DATA_BUFFER_SIZE size_t(1024 * 1024)
-#define DISCONNECT_TIME_SECOND 10
+#define DISCONNECT_TIME_SECOND 30
 #define OUT
 
 Server::Server()
@@ -31,6 +31,7 @@ void Server::run()
 		std::cin >> port;
 	}
 
+	std::cout << "Using port " << port << std::endl;
 	mAddr.port_ = port;
 
 	if (!openListener())
@@ -112,7 +113,7 @@ Server::Result Server::receive(SocketData* socketData)
 	while (received < dataBufferSize)
 	{
 		auto receiveResult = socketData->socket.receive(
-			dataBufferSize - received,
+			(uint32_t)(dataBufferSize - received),
 			(uint8*)socketData->dataBuffer.getData());
 
 		received += receiveResult.length_;
@@ -202,14 +203,14 @@ void Server::process(std::list<std::unique_ptr<SocketData>>::iterator& it, const
 	case Server::Result::BadRequest:
 		Utility::printIPAddr(addr);
 		printf("Error: %s\n", result.errorMsg.c_str());
-		response(Response::BadRequest, request.timeStamp, socket);
+		response(Response::BadRequest, request.timestamp, socket);
 		mSocketDataList.erase(it++);
 		break;
 
 	case Server::Result::Success:
 		Utility::printIPAddr(addr);
 		printf("%s\n",request.formRequestStringServer().c_str());
-		response(Response::Success, request.timeStamp, socket);
+		response(Response::Success, request.timestamp, socket);
 		break;
 	}
 }
@@ -220,7 +221,7 @@ void Server::response(Response::Status status, float timestamp, tcp_socket& sock
 	std::string responseString = response.formResponse();
 	size_t size = responseString.length();
 
-	socket.send(size, (const uint8*)responseString.c_str());
+	socket.send((uint32_t)size, (const uint8*)responseString.c_str());
 }
 
 Server::Result Server::reconstructHeader(char* data, size_t size, Request& request, size_t& headerLength)
@@ -288,7 +289,7 @@ Server::Result Server::reconstructHeader(char* data, size_t size, Request& reque
 		try
 		{
 			request.put = std::move(headerTokens[0]);
-			request.timeStamp = std::stof(headerTokens[1]);
+			request.timestamp = std::stof(headerTokens[1]);
 			request.level = Level::toLevel(headerTokens[2]);
 			request.bodyLength = static_cast<size_t>(std::stoi(headerTokens[3]));
 		}

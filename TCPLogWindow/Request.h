@@ -16,15 +16,7 @@ namespace Level
 		Count
 	};
 
-	static const std::array<std::string, Level::Count> LevelStrings =
-	{
-		"Error",
-		"Warn",
-		"Info",
-		"Debug",
-	};
-
-	inline const std::string toString(Level level) { return LevelStrings[level]; }
+	const std::string toString(Level level);
 	const Level toLevel(const std::string& string);
 }
 
@@ -32,15 +24,13 @@ namespace Level
 struct Request
 {
 	Request();
-
-	bool operator==(const Request& rhs) const;
-	bool operator!=(const Request& rhs) const;
+	Request(const std::string& put, Level::Level level, size_t bodyLength, const std::string& body);
 
 	std::string formRequestStringClient();
 	std::string formRequestStringServer() const;
 
 	std::string put;
-	float timeStamp;
+	float timestamp;
 	Level::Level level;
 	size_t bodyLength;
 	std::string body;

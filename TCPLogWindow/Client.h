@@ -1,6 +1,10 @@
 #pragma once
 #include "networking.h"
 #include "DataBuffer.h"
+#include "Request.h"
+
+#include <vector>
+#include <memory>
 
 namespace Level
 {
@@ -14,8 +18,12 @@ public:
 
 	void run();
 
+	void listenUserRequest();
+
 private:
-	bool send(const std::string& put, Level::Level level, const std::string& body);
+	bool send();
+
+	bool sendRequest(Request* request);
 
 	bool connect(const ip_address& serverAddr);
 
@@ -28,4 +36,6 @@ private:
 	tcp_socket mSocket;
 
 	DataBuffer mDataBuffer;
+
+	std::vector<std::unique_ptr<Request>> mRequestQueue;
 };

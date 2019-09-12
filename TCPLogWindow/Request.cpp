@@ -5,6 +5,18 @@
 
 namespace Level
 {
+	static const std::array<std::string, Level::Count> LevelStrings =
+	{
+		"Error",
+		"Warn",
+		"Info",
+		"Debug",
+	};
+
+	const std::string toString(Level level)
+	{
+		return LevelStrings[level];
+	}
 	const Level toLevel(const std::string& string)
 	{
 		for (auto it = LevelStrings.begin(); it != LevelStrings.end(); ++it)
@@ -22,33 +34,29 @@ namespace Level
 
 Request::Request()
 	: put()
-	, timeStamp(0)
+	, timestamp(0)
 	, level(Level::None)
 	, bodyLength(0)
 	, body()
 {
 }
 
-bool Request::operator==(const Request& rhs) const
+Request::Request(const std::string& put, Level::Level level, size_t bodyLength, const std::string& body)
+	: put(put)
+	, timestamp(0)
+	, level(level)
+	, bodyLength(bodyLength)
+	, body(body)
 {
-	return level == rhs.level
-		&& bodyLength == rhs.bodyLength
-		&& timeStamp == rhs.timeStamp
-		&& put == put;
-}
-
-bool Request::operator!=(const Request& rhs) const
-{
-	return !(*this==rhs);
 }
 
 std::string Request::formRequestStringClient()
 {
-	timeStamp = time::now().as_milliseconds();
+	timestamp = time::now().as_milliseconds();
 
 	std::string request =
 		"Put " + put + "\r\n"
-		+ "Timestamp: " + std::to_string(timeStamp) + "\r\n"
+		+ "Timestamp: " + std::to_string(timestamp) + "\r\n"
 		+ "Level: " + Level::toString(level) + "\r\n"
 		+ "Length: " + std::to_string(bodyLength) + "\r\n"
 		+ "\r\n"
@@ -59,7 +67,7 @@ std::string Request::formRequestStringClient()
 
 std::string Request::formRequestStringServer() const
 {
-	std::string request = put + " " + std::to_string(timeStamp) + " "
+	std::string request = put + " " + std::to_string(timestamp) + " "
 		+ Level::toString(level) + " " + body;
 
 	return request;
