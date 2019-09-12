@@ -3,8 +3,9 @@
 
 #include <windows.h>
 #include <iostream>
+#include <exception>
 
-#define TEST_SERVER_ADDRESS 127, 0, 0, 1, 50000
+#define TEST_SERVER_ADDRESS 127, 0, 0, 1, 55555
 #define DATA_BUFFER_SIZE 1024 * 1024
 
 Client::Client()
@@ -16,7 +17,19 @@ void Client::run()
 {
 	printf("Client: \n");
 
-	if (!connect())
+	std::string addrString;
+	ip_address addr;
+	std::cout << "Enter server IP address and port" << std::endl;
+	std::cout << "Example: 127.0.0.1:55555" << std::endl;
+	std::cout << "IP address and port: ";
+	std::cin >> addrString;
+	while (!stringToAddr(addrString, addr))
+	{
+		std::cout << "Wrong format, enter again: ";
+		std::cin >> addrString;
+	}
+
+	if (!connect(addr))
 		return;
 
 	int sentCount = 0;
@@ -37,23 +50,21 @@ void Client::run()
 			return;
 		}
 
-		for (sentCount; sentCount < 10;  ++sentCount)
-		{
-			if (!send())
-				return;
-			Sleep(10);
-		}
+		std::string requestBody;
+		std::cout << "Request: ";
+		std::cin >> requestBody;
+
+		send("/game", Level::Info, requestBody);
 	}
 }
 
-bool Client::send()
+bool Client::send(const std::string& put, Level::Level level, const std::string& body)
 {
 	Request request;
-	request.put = "/game";
-	request.level = Level::Info;
-	std::string requestBody("A test message");
-	request.bodyLength = requestBody.length();
-	request.body = std::move(requestBody);
+	request.put = put;
+	request.level = level;
+	request.bodyLength = body.length();
+	request.body = std::move(body);
 
 	std::string requestString = request.formRequestStringClient();
 
@@ -80,9 +91,9 @@ bool Client::send()
 	return true;
 }
 
-bool Client::connect()
+bool Client::connect(const ip_address& serverAddr)
 {
-	ip_address serverAddr(TEST_SERVER_ADDRESS);
+	//serverAddr = ip_address(TEST_SERVER_ADDRESS);
 	auto result = mSocket.connect(serverAddr);
 	if (result.is_failure())
 	{
@@ -123,4 +134,52 @@ bool Client::receive(char* dataBuffer, size_t bufferSize, size_t& receivedLength
 	}
 
 	return false;
+}
+
+bool Client::stringToAddr(std::string& addrString, ip_address& addr)
+{
+	std::string tokens[5];
+	const std::string dot(".");
+	const std::string colum(":");
+	size_t pos = 0;
+	size_t ipTokenCount = 0;
+
+	std::string ipString;
+
+	// split the ip and port
+	if ((pos = addrString.find(colum)) != std::string::npos)
+	{
+		ipString = addrString.substr(0, pos);
+		addrString.erase(0, pos + colum.length());
+		tokens[4] = std::move(addrString);
+	}
+
+	while ((pos = ipString.find(dot)) != std::string::npos)
+	{
+		std::string ipToken = ipString.substr(0, pos);
+		tokens[ipTokenCount] = std::move(ipToken);
+		++ipTokenCount;
+		ipString.erase(0, pos + dot.length());
+	}
+
+	if (ipTokenCount != 3)
+		return false;
+
+	tokens[ipTokenCount] = std::move(ipString);
+
+
+	try
+	{
+		addr = ip_address(std::stoi(tokens[0]),
+						  std::stoi(tokens[1]),
+						  std::stoi(tokens[2]),
+						  std::stoi(tokens[3]),
+						  std::stoi(tokens[4]));
+	}
+	catch(std::exception e)
+	{
+		return false;
+	}
+
+	return true;
 }

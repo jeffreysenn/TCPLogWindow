@@ -2,11 +2,11 @@
 #include "Request.h"
 #include "Utility.h"
 
-
 #include <array>
 #include <exception>
+#include <iostream>
 
-#define TEST_SERVER_ADDRESS 0, 0, 0, 0, 50000
+#define TEST_SERVER_ADDRESS 0, 0, 0, 0, 55555
 #define DATA_BUFFER_SIZE size_t(1024 * 1024)
 #define DISCONNECT_TIME_SECOND 10
 #define OUT
@@ -19,6 +19,19 @@ Server::Server()
 void Server::run()
 {
 	printf("Server: \n");
+	
+	uint16_t port;
+	std::cout << "Specify port: ";
+	std::cin >> port;
+	while (std::cin.fail())
+	{
+		std::cin.clear();
+		std::cin.ignore(INT_MAX,'\n');
+		std::cout << "Wrong format. Enter again: ";
+		std::cin >> port;
+	}
+
+	mAddr.port_ = port;
 
 	if (!openListener())
 		return;
