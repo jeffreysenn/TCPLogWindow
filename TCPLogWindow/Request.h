@@ -2,6 +2,7 @@
 #include <string>
 #include <memory>
 #include <array>
+#include <exception>
 
 namespace Level
 {
@@ -11,6 +12,7 @@ namespace Level
 		Warn,
 		Info,
 		Debug,
+		None,
 		Count
 	};
 
@@ -27,22 +29,19 @@ namespace Level
 }
 
 
-class Request
+struct Request
 {
-public:
 	Request();
-	Request(const std::string&& put, Level::Level level, size_t length, const std::string&& body);
 
 	bool operator==(const Request& rhs) const;
 	bool operator!=(const Request& rhs) const;
 
 	std::string formRequestStringClient();
-	std::string formRequestStringServer();
+	std::string formRequestStringServer() const;
 
 	std::string put;
 	float timeStamp;
 	Level::Level level;
-	size_t length;
+	size_t bodyLength;
 	std::string body;
 };
-

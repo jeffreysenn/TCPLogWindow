@@ -33,6 +33,15 @@
     <ClCompile Include="Request.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DataBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SocketData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Response.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="networking.h">
@@ -54,6 +63,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Utility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SocketData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Response.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

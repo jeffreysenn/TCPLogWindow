@@ -1,6 +1,8 @@
 #include "Request.h"
 #include "networking.h"
 
+#include <exception>
+
 namespace Level
 {
 	const Level toLevel(const std::string& string)
@@ -13,32 +15,24 @@ namespace Level
 				return static_cast<Level>(index);
 			}
 		}
-		return Level::Error;
+		throw std::exception("Cannot cast to level");
+		return Level::None;
 	}
 }
 
 Request::Request()
 	: put()
 	, timeStamp(0)
-	, level(Level::Error)
-	, length(0)
+	, level(Level::None)
+	, bodyLength(0)
 	, body()
-{
-}
-
-Request::Request(const std::string&& put, Level::Level level, size_t length, const std::string&& body)
-	: put(put)
-	, timeStamp(0)
-	, level(level)
-	, length(length)
-	, body(body)
 {
 }
 
 bool Request::operator==(const Request& rhs) const
 {
 	return level == rhs.level
-		&& length == rhs.length
+		&& bodyLength == rhs.bodyLength
 		&& timeStamp == rhs.timeStamp
 		&& put == put;
 }
@@ -56,18 +50,17 @@ std::string Request::formRequestStringClient()
 		"Put " + put + "\r\n"
 		+ "Timestamp: " + std::to_string(timeStamp) + "\r\n"
 		+ "Level: " + Level::toString(level) + "\r\n"
-		+ "Length: " + std::to_string(length) + "\r\n"
+		+ "Length: " + std::to_string(bodyLength) + "\r\n"
 		+ "\r\n"
 		+ body;
 
 	return request;
 }
 
-std::string Request::formRequestStringServer()
+std::string Request::formRequestStringServer() const
 {
 	std::string request = put + " " + std::to_string(timeStamp) + " "
-		+ Level::toString(level) + " " + body	+ "\r\n";
+		+ Level::toString(level) + " " + body;
 
 	return request;
 }
-

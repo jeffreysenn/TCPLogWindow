@@ -1,5 +1,4 @@
 #include "Client.h"
-#include "networking.h"
 #include "Request.h"
 
 #include <windows.h>
@@ -17,11 +16,12 @@ void Client::run()
 	if (!connect())
 		return;
 
-	//for(int i = 0; i < 10; ++i)
+	//for (int i = 0; i < 10; ++i)
 	while (true)
-		send();
+		if (!send())
+			return;
 
-	Sleep(1000000);
+	Sleep(1000 * 10);
 }
 
 bool Client::send()
@@ -29,8 +29,8 @@ bool Client::send()
 	Request request;
 	request.put = "/game";
 	request.level = Level::Info;
-	std::string requestBody("A test message \r\n");
-	request.length = requestBody.length();
+	std::string requestBody("A test message");
+	request.bodyLength = requestBody.length();
 	request.body = std::move(requestBody);
 
 	std::string requestString = request.formRequestStringClient();

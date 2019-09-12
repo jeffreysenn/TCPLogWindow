@@ -1,9 +1,9 @@
 #pragma once
 #include "networking.h"
-#include "DataBuffer.h"
+#include "SocketData.h"
 
 #include <list>
-
+#include <memory>
 
 class Server
 {
@@ -13,14 +13,37 @@ public:
 	void run();
 
 private:
+	struct Result
+	{
+		enum Type
+		{
+			NoData,
+			Timeout,
+			Spamming,
+			BadRequest,
+			RequestIncomplete,
+			Success,
+		};
+
+		Type type;
+		std::string errorMsg;
+	};
+
+private:
 	bool openListener();
 	bool acceptClient();
-	bool receive();
-	struct Request reconstructRequest(char* data, size_t size);
+
+	/* receives data and write to the buffer, 
+		returns true when data is received, 
+		false when there is no data */
+	Result receive(SocketData* socketData);
+	Result reconstruct(SocketData* socketData, struct Request& request);
+	void process(std::list<std::unique_ptr<SocketData>>::iterator& it, const struct Request& request, const Result& result);
+
+	Result reconstructHeader(char* data, size_t size, struct Request& request, size_t& headerLength);
 
 private:
 	ip_address mAddr;
 	tcp_listener mListener;
-	std::list<SocketData> mSocketDataList;
+	std::list<std::unique_ptr<SocketData>> mSocketDataList;
 };
-
